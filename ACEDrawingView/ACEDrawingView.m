@@ -167,7 +167,13 @@
         
     } else {
         // set the draw point
-        [self.cacheImage drawAtPoint:CGPointZero];
+        if (self.drawMode == ACEDrawingModeOriginalSize) {
+            [self.cacheImage drawAtPoint:CGPointZero];
+        }
+        else {
+            [self.cacheImage drawInRect:self.bounds];
+        }
+
         [self.currentTool draw];
     }
     
