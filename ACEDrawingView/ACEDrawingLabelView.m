@@ -54,6 +54,9 @@ CG_INLINE CGSize CGAffineTransformGetScale(CGAffineTransform t)
     return CGSizeMake(sqrt(t.a * t.a + t.c * t.c), sqrt(t.b * t.b + t.d * t.d)) ;
 }
 
+CGFloat const ACETextFieldWidthInset = 10.0f;
+CGFloat const ACEDrawingLabelMinSize = 50.0f;
+
 @interface ACEDrawingLabelView () <UIGestureRecognizerDelegate, UITextFieldDelegate>
 
 @property (nonatomic, assign) CGRect initialBounds;
@@ -574,15 +577,15 @@ static const NSUInteger ACELVMinimumFontSize = 9;
     NSAttributedString *attributedText = [[NSAttributedString alloc] initWithString:[text stringByAppendingString:@"xx"]
                                                                          attributes:@{ NSFontAttributeName : font }];
     
-    CGRect rectSize = [attributedText boundingRectWithSize:CGSizeMake(CGFLOAT_MAX, CGRectGetHeight(self.frame)-24)
+    CGRect rectSize = [attributedText boundingRectWithSize:CGSizeMake(CGFLOAT_MAX, CGRectGetHeight(self.frame)-ACETextFieldWidthInset)
                                                    options:NSStringDrawingUsesLineFragmentOrigin
                                                    context:nil];
     
-    float w1 = (ceilf(rectSize.size.width) + 24 < 50) ? self.frame.size.width : ceilf(rectSize.size.width) + 24;
-    float h1 =(ceilf(rectSize.size.height) + 24 < 50) ? 50 : ceilf(rectSize.size.height) + 24;
+    float w1 = (ceilf(rectSize.size.width) + ACETextFieldWidthInset < ACEDrawingLabelMinSize) ? self.frame.size.width : ceilf(rectSize.size.width) + ACETextFieldWidthInset;
+    float h1 =(ceilf(rectSize.size.height) + ACETextFieldWidthInset < ACEDrawingLabelMinSize) ? ACEDrawingLabelMinSize : ceilf(rectSize.size.height) + ACETextFieldWidthInset;
     
     CGRect viewFrame = self.superview.bounds;
-    viewFrame.size.width = w1 + 24;
+    viewFrame.size.width = w1 + ACETextFieldWidthInset;
     viewFrame.size.height = h1;
     self.superview.bounds = viewFrame;
 }
