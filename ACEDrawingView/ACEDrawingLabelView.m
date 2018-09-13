@@ -54,7 +54,8 @@ CG_INLINE CGSize CGAffineTransformGetScale(CGAffineTransform t)
     return CGSizeMake(sqrt(t.a * t.a + t.c * t.c), sqrt(t.b * t.b + t.d * t.d)) ;
 }
 
-CGFloat const ACETextFieldWidthInset = 10.0f;
+CGFloat const ACETextFieldWidthInset = 12.0f;
+CGFloat const ACETextFieldHeightInset = 12.0f;
 CGFloat const ACEDrawingLabelMinSize = 50.0f;
 
 @interface ACEDrawingLabelView () <UIGestureRecognizerDelegate, UITextFieldDelegate>
@@ -70,7 +71,6 @@ CGFloat const ACEDrawingLabelMinSize = 50.0f;
 @property (nonatomic, assign) CGFloat deltaAngle;
 @property (nonatomic, assign) CGRect beginBounds;
 
-@property (nonatomic, assign) CGSize globalInsets;
 @property (nonatomic, strong) CAShapeLayer *border;
 @property (nonatomic, strong) UITextField *labelTextField;
 @property (nonatomic, strong) UIButton *rotateButton;
@@ -120,7 +120,6 @@ CGFloat const ACEDrawingLabelMinSize = 50.0f;
         self.labelTextField = [[UITextField alloc] initWithFrame:CGRectZero];
         self.border = [CAShapeLayer layer];
 
-        _globalInsets = CGSizeMake(12, 12);
         _closeButtonOffset = CGPointZero;
         _rotateButtonOffset = CGPointZero;
         _closeButtonSize = CGSizeMake(24, 24);
@@ -135,7 +134,6 @@ CGFloat const ACEDrawingLabelMinSize = 50.0f;
         self.borderColor = [UIColor redColor];
 
         [self.labelTextField setAutoresizingMask:(UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight)];
-        [self.labelTextField setClipsToBounds:YES];
         self.labelTextField.delegate = self;
         self.labelTextField.backgroundColor = [UIColor clearColor];
         self.labelTextField.tintColor = [UIColor redColor];
@@ -152,14 +150,14 @@ CGFloat const ACEDrawingLabelMinSize = 50.0f;
         self.closeButton = [[UIButton alloc] initWithFrame:CGRectZero];
         [self.closeButton setAutoresizingMask:(UIViewAutoresizingFlexibleRightMargin|UIViewAutoresizingFlexibleBottomMargin)];
         self.closeButton.backgroundColor = [UIColor whiteColor];
-        self.closeButton.layer.cornerRadius = self.globalInsets.width - 5;
+        self.closeButton.layer.cornerRadius = 8.0f;
         self.closeButton.userInteractionEnabled = YES;
         [self addSubview:self.closeButton];
         
         self.rotateButton = [[UIButton alloc] initWithFrame:CGRectZero];
         [self.rotateButton setAutoresizingMask:(UIViewAutoresizingFlexibleLeftMargin|UIViewAutoresizingFlexibleTopMargin)];
         self.rotateButton.backgroundColor = [UIColor whiteColor];
-        self.rotateButton.layer.cornerRadius = self.globalInsets.width - 5;
+        self.rotateButton.layer.cornerRadius = 8.0f;
         self.rotateButton.contentMode = UIViewContentModeCenter;
         self.rotateButton.userInteractionEnabled = YES;
         [self addSubview:self.rotateButton];
@@ -193,7 +191,9 @@ CGFloat const ACEDrawingLabelMinSize = 50.0f;
 - (void)layoutSubviews
 {
     if (self.labelTextField) {
-        self.border.path = [UIBezierPath bezierPathWithRect:self.labelTextField.bounds].CGPath;
+        CGRect borderRect = UIEdgeInsetsInsetRect(self.labelTextField.bounds, UIEdgeInsetsMake(-5, -5, -5, 0));
+
+        self.border.path = [UIBezierPath bezierPathWithRect:borderRect].CGPath;
         self.border.frame = self.labelTextField.bounds;
     }
 }
@@ -205,7 +205,7 @@ CGFloat const ACEDrawingLabelMinSize = 50.0f;
 
 - (void)applyLayout
 {
-    _labelTextField.frame = CGRectInset(self.bounds, self.globalInsets.width, self.globalInsets.height);
+    _labelTextField.frame = CGRectInset(self.bounds, ACETextFieldWidthInset, ACETextFieldHeightInset);
     _closeButton.frame = CGRectMake(self.closeButtonOffset.x, self.closeButtonOffset.y, self.closeButtonSize.width, self.closeButtonSize.height);
     _rotateButton.frame = CGRectMake(
                                      self.bounds.size.width - self.rotateButtonSize.width + self.rotateButtonOffset.x,
@@ -456,7 +456,7 @@ CGFloat const ACEDrawingLabelMinSize = 50.0f;
     CGPoint center = CGRectGetCenter(self.frame);
     
     if ([recognizer state] == UIGestureRecognizerStateBegan) {
-        self.deltaAngle = atan2(self.touchLocation.y-center.y, self.touchLocation.x-center.x)-CGAffineTransformGetAngle(self.transform);
+        self.deltaAngle = atan2(self.touchLocation.y - center.y, self.touchLocation.x - center.x) - CGAffineTransformGetAngle(self.transform);
         
         self.initialBounds = self.bounds;
         self.initialDistance = CGPointGetDistance(center, self.touchLocation);
@@ -465,21 +465,23 @@ CGFloat const ACEDrawingLabelMinSize = 50.0f;
             [self.delegate labelViewDidBeginEditing:self];
         }
     } else if ([recognizer state] == UIGestureRecognizerStateChanged) {
-        float ang = atan2(self.touchLocation.y-center.y, self.touchLocation.x-center.x);
+        float ang = atan2(self.touchLocation.y - center.y, self.touchLocation.x - center.x);
         
         float angleDiff = self.deltaAngle - ang;
         [self setTransform:CGAffineTransformMakeRotation(-angleDiff)];
         [self setNeedsDisplay];
         
         //Finding scale between current touchPoint and previous touchPoint
-        double scale = sqrtf(CGPointGetDistance(center, self.touchLocation)/self.initialDistance);
+        double scale = sqrtf(CGPointGetDistance(center, self.touchLocation) / self.initialDistance);
         
         CGRect scaleRect = CGRectScale(self.initialBounds, scale, scale);
-        
-        if (scaleRect.size.width >= (1+self.globalInsets.width*2 + 20) && scaleRect.size.height >= (1+self.globalInsets.height*2 + 20)) {
+
+        if (scaleRect.size.width >= ACEDrawingLabelMinSize && scaleRect.size.height >= ACEDrawingLabelMinSize) {
             if (self.fontSize < 100 || CGRectGetWidth(scaleRect) < CGRectGetWidth(self.bounds)) {
                 CGRect boundsCheckRect = scaleRect;
-                boundsCheckRect.size.width -= self.globalInsets.width * 2;
+                boundsCheckRect.size.width -= ACETextFieldWidthInset * 2.0f;
+                boundsCheckRect.size.height -= ACETextFieldHeightInset * 2.0f;
+
                 [self.labelTextField adjustsFontSizeToFillRect:boundsCheckRect];
                 [self setBounds:scaleRect];
             }
@@ -489,6 +491,8 @@ CGFloat const ACEDrawingLabelMinSize = 50.0f;
             [self.delegate labelViewDidChangeEditing:self];
         }
     } else if ([recognizer state] == UIGestureRecognizerStateEnded) {
+        [self.labelTextField adjustsWidthToFillItsContents];
+
         if ([self.delegate respondsToSelector:@selector(labelViewDidEndEditing:)]) {
             [self.delegate labelViewDidEndEditing:self];
         }
@@ -549,19 +553,18 @@ static const NSUInteger ACELVMinimumFontSize = 9;
 
 - (void)adjustsFontSizeToFillRect:(CGRect)newBounds
 {
-    NSString *text = (![self.text isEqualToString:@""] || !self.placeholder) ? self.text : self.placeholder;
-    
-    for (NSUInteger i = ACELVMaximumFontSize; i > ACELVMinimumFontSize; i--) {
-        UIFont *font = [UIFont fontWithName:self.font.fontName size:(CGFloat)i];
-        NSAttributedString *attributedText = [[NSAttributedString alloc] initWithString:text
-                                                                             attributes:@{ NSFontAttributeName : font }];
-        
-        CGRect rectSize = [attributedText boundingRectWithSize:CGSizeMake(CGRectGetWidth(newBounds), CGFLOAT_MAX)
-                                                       options:NSStringDrawingUsesLineFragmentOrigin
-                                                       context:nil];
-        
-        if (CGRectGetHeight(rectSize) <= CGRectGetHeight(newBounds)) {
-            ((ACEDrawingLabelView *)self.superview).fontSize = (CGFloat)i-1;
+    UITextField * labelTextField = [[UITextField alloc] initWithFrame:newBounds];
+    labelTextField.text = self.text;
+    labelTextField.placeholder = self.placeholder;
+
+    for (CGFloat fontSize = ACELVMaximumFontSize; fontSize > ACELVMinimumFontSize; fontSize--) {
+        labelTextField.font = [UIFont fontWithName:self.font.fontName size:fontSize];
+        [labelTextField sizeToFit];
+
+        CGFloat expectedWidth = labelTextField.frame.size.width;
+
+        if (newBounds.size.width >= expectedWidth) {
+            ((ACEDrawingLabelView *)self.superview).fontSize = fontSize - 1;
             break;
         }
     }
@@ -569,24 +572,19 @@ static const NSUInteger ACELVMinimumFontSize = 9;
 
 - (void)adjustsWidthToFillItsContents
 {
-    NSString *text = (![self.text isEqualToString:@""] || !self.placeholder) ? self.text : self.placeholder;
-    UIFont *font = [UIFont fontWithName:self.font.fontName size:self.font.pointSize];
     // Hotfix: despite exact text measurement, label text ends up clipped either on the beginning or the end.
     // Inserting a couple extra characters here makes the end stick out awkwardly sometimes, but avoids the
     // issue if you rotate the text.
-    NSAttributedString *attributedText = [[NSAttributedString alloc] initWithString:[text stringByAppendingString:@"xx"]
-                                                                         attributes:@{ NSFontAttributeName : font }];
-    
-    CGRect rectSize = [attributedText boundingRectWithSize:CGSizeMake(CGFLOAT_MAX, CGRectGetHeight(self.frame)-ACETextFieldWidthInset)
-                                                   options:NSStringDrawingUsesLineFragmentOrigin
-                                                   context:nil];
-    
-    float w1 = (ceilf(rectSize.size.width) + ACETextFieldWidthInset < ACEDrawingLabelMinSize) ? self.frame.size.width : ceilf(rectSize.size.width) + ACETextFieldWidthInset;
-    float h1 =(ceilf(rectSize.size.height) + ACETextFieldWidthInset < ACEDrawingLabelMinSize) ? ACEDrawingLabelMinSize : ceilf(rectSize.size.height) + ACETextFieldWidthInset;
-    
+
+    CGSize rectSize = [self sizeThatFits:self.bounds.size];
+
+    CGFloat expectedWidth = ceilf(rectSize.width) + ACETextFieldWidthInset * 2.0f + 5.0f;
+    CGFloat expectedHeight = ceilf(rectSize.height) + ACETextFieldHeightInset * 2.0f;
+
     CGRect viewFrame = self.superview.bounds;
-    viewFrame.size.width = w1 + ACETextFieldWidthInset;
-    viewFrame.size.height = h1;
+    viewFrame.size.width = MAX(ACEDrawingLabelMinSize, expectedWidth);
+    viewFrame.size.height = MAX(ACEDrawingLabelMinSize, expectedHeight);
+
     self.superview.bounds = viewFrame;
 }
 
